@@ -1,0 +1,290 @@
+"""
+@author: Juan Manuel Acevedo Valle
+@created: Juen 2017
+"""
+import matplotlib
+from scipy.integrate import odeint
+from scipy import linspace
+import ipywidgets as widgets
+from ipywidgets import Layout
+from divapy import Diva
+import matplotlib.pyplot as plt
+from IPython import display
+import numpy as np
+import pickle
+from matplotlib.ticker import MaxNLocator
+
+default_params = {'x0': np.array([0.0]*13),
+                  'xp0': np.array([0.0]*13), 'm': np.array([0.0] * 13),
+                  'w0': 2 * np.pi / 0.4, 'damping_factor': 1.01, 'D_t': 0.4}
+
+matplotlib.rcParams['figure.figsize'] = (5.5, 5.0)
+# matplotlib.rcParams.update({'font.size': 9})
+matplotlib.rcParams['xtick.major.pad'] = 8
+matplotlib.rcParams['ytick.major.pad'] = 8
+
+class Articulation(object):
+    def __init__(self, **kargs):
+        default_params_ = {'x0': np.array([0.0] * 13),
+                          'xp0': np.array([0.0] * 13), 'm': np.array([0.0] * 13),
+                          'w0': 2 * np.pi / 0.4, 'damping_factor': 1.01, 'D_t': 0.4}
+        self.params = default_params_
+        for key in kargs.keys():
+            self.params[key] = kargs[key]
+
+    def defaul(self):
+        # params = {'x0': 0.0, 'm': np.array([0.0] * 13),'w0': 2 * np.pi / 0.4, 'damping_factor':1.01, 'D_t': 0.4}
+        self.params = default_params
+
+sys = Diva()
+sys.af_series = []
+
+
+m = []
+for i in range(10):
+    m += [widgets.FloatSlider(value=0, min=-3., max=3.,
+                              step=0.01,
+                              disabled=False,
+                              continuous_update=False,
+                              description='M' + str(i),
+                              orientation='vertical',
+                              readout=True,
+                              readout_format='f',
+                              slider_color='white'
+                              )]
+
+for i in range(3):
+    m += [widgets.FloatSlider(value=0.2, min=0., max=1.,
+                              step=0.01,
+                              disabled=False,
+                              continuous_update=False,
+                              description='M' + str(i + 10),
+                              orientation='vertical',
+                              readout=True,
+                              readout_format='f',
+                              slider_color='white'
+                              )]
+
+sound_chk = widgets.Checkbox(value=True, description="Play sound:")
+sound_btn = widgets.Button(description="Repeat", disabled=True)
+
+params_box = []
+params_box += [widgets.Label(value='$$\Delta t$$', layout=Layout(width='3%'))]
+params_box += [widgets.FloatSlider(value = default_params['D_t'],
+                                   min=0.01, max = 1, step = 0.01,
+                                   orientation='horizontal',layout=Layout(width='20%'))]
+
+
+params_box += [widgets.Label(value='$$\omega _0$$', layout=Layout(width='3%'))]
+params_box += [widgets.FloatSlider(value=default_params['w0'],
+                                   min=0.5, max = 30, step = 0.5,
+                                   orientation='horizontal',layout=Layout(width='20%'))]
+
+params_box += [widgets.Label(value='$$\zeta $$', layout=Layout(width='3%'))]
+params_box += [widgets.FloatSlider(value=default_params['damping_factor'],
+                                   min=0.5, max = 2, step = 0.02,
+                                   orientation='horizontal',layout=Layout(width='20%'))]
+
+add_btn = widgets.Button(description="Set x_0", disabled=False,layout=Layout(width='12%'))
+play_all_btn = widgets.Button(description="Play all", disabled=False,layout=Layout(width='12%'))
+
+
+play = widgets.Play(
+#     interval=10,
+    value=50,
+    min=0,
+    max=100,
+    step=1,
+    description="Press play",
+    disabled=False
+)
+slider = widgets.IntSlider()
+widgets.jslink((play, 'value'), (slider, 'value'))
+
+
+sys.articulations = []
+sys.articulatory_x0 = np.zeros((13,))
+sys.articulatory_xp0 = np.zeros((13,))
+
+fig_outline, ax_outline = plt.subplots()
+
+def btn_repeat_sound_callback(foo):
+    #     sound_btn.disabled =True
+    if sound_chk.value:
+        sound_btn.disabled = False
+        arts = np.array([x.get_interact_value() for x in m])
+        sound = sys.get_static_sound(arts)
+        sys.play_sound(sound)
+
+def play_all_callback(foo):
+    update_main_plots(sys.articulations)
+
+
+
+def add_articulation_callback(foo):
+    if add_btn.description == "Set x_0":
+        sys.articulatory_x0 = np.array([float(x.get_interact_value()) for x in m])
+        sys.articulatory_xp0 = np.zeros((13,))
+        add_btn.description = "Add"
+    else:
+        m_ = np.array([float(x.get_interact_value()) for x in m])
+        D_t = params_box[1].get_interact_value()
+        w0 = params_box[3].get_interact_value()
+        damping_factor = params_box[5].get_interact_value()
+        if len(sys.articulations)>0:
+            sys.articulations += [Articulation(**{'m':m_,'w0':w0,'D_t':D_t,
+                                                  'damping_factor':damping_factor})]
+        else:
+            sys.articulations += [Articulation(**{'m': m_, 'w0': w0, 'D_t': D_t,
+                             'x0':sys.articulatory_x0, 'xp0':sys.articulatory_xp0,
+                             'damping_factor': damping_factor})]
+
+    # print('ADDED')
+    # display.clear_output(wait=True)  # wait=True
+
+def vt_plot(foo):
+    m_ = np.array([float(x.get_interact_value()) for x in m])
+    D_t = params_box[1].get_interact_value()
+    w0 = params_box[3].get_interact_value()
+    damping_factor = params_box[5].get_interact_value()
+
+    art_ = [Articulation(**{'m':m_,'w0':w0,'D_t':D_t, 'damping_factor':damping_factor})]
+
+    if len(sys.articulations) > 0:
+        art__ = sys.articulations[-1]
+        last_motor = get_motor_dynamics([art__])
+        art_[-1].params['x0'] = last_motor[-1, :13]
+        art_[-1].params['xp0'] = last_motor[-1, 13:]
+
+    arts_ = sys.articulations + art_
+    update_main_plots(arts_)
+
+
+def update_main_plots(articulations):
+    motor_trajectory = get_motor_dynamics(articulations)
+    aud, som, c, af = sys.get_audsom(motor_trajectory[:,:13])
+    sys.af_play = af
+    sound = sys.get_sound(motor_trajectory)
+
+    # display.clear_output(wait=True)  # wait=True
+    sys.plot_outline(motor_trajectory[-1,:13], axes=ax[0, 0])
+    ax[0, 0].set_title("Outline [End]")
+
+
+    time = np.array(range(motor_trajectory.shape[0]))*0.005
+    ax[0, 1].plot(time,aud)
+    plt.hold(True)
+    ax[0, 1].set_title("Audio Formants")
+    plt.gca().xaxis.set_major_locator(MaxNLocator(prune='lower'))
+
+    time_s = np.linspace(0,time[-1],len(sound))
+    ax[0, 2].plot(time_s, sound)
+    plt.hold(True)
+    ax[0, 2].set_title("Sound")
+    plt.gca().xaxis.set_major_locator(MaxNLocator(prune='lower'))
+
+    ax[1, 1].plot(time,som)
+    plt.hold(True)
+    ax[1, 1].set_ylim([-1, 1])
+    # ax[1, 1].invert_xaxis()
+    ax[1, 1].set_title("Somatosignals")
+    plt.gca().xaxis.set_major_locator(MaxNLocator(prune='lower'))
+
+    ax[1, 0].plot(af[slider.value], 'b')
+    plt.hold(True)
+    ax[1, 0].invert_xaxis()
+    ax[1, 0].set_title("Area Function [End]")
+
+    ax[1, 2].plot(time, motor_trajectory[:,:13])
+    plt.hold(True)
+    # ax[1, 2].invert_xaxis()
+    ax[1, 2].set_title("Motor trajectories")
+    plt.gca().xaxis.set_major_locator(MaxNLocator(prune='lower'))
+
+    sound_btn.disabled = True
+    if sound_chk.value:
+        sound_btn.disabled = False
+        sys.play_sound(sound)
+
+    plt.show()
+
+def update_af(foo):
+    ax[1,0].plot(sys.af_play[slider.value], 'b')
+    plt.hold(True)
+    ax[1, 0].invert_xaxis()
+    ax[1, 0].set_title("Area Function [End]")
+
+def get_motor_dynamics(articulations):
+    ts = 0.005  # Sampling time diva vocal tract sound waves
+
+    arts_trajectory = []
+    for art_ in articulations:
+        if len(arts_trajectory)==0:
+            x0 = art_.params['x0']
+            xp0 = art_.params['xp0']
+        else:
+            x0 = arts_trajectory[-1][-1,:13]
+            xp0 = arts_trajectory[-1][-1,13:]
+        y0 = np.zeros((26,))
+        y0[:13] = x0
+        y0[13:] = xp0
+        m_ = art_.params['m']
+        D_t = art_.params['D_t']
+        w0 = art_.params['w0']
+        damping_factor = art_.params['damping_factor']
+
+        n_samples = int(D_t / ts + 1)
+        y_neutral = [0.0] * 13
+        y_neutral[11] = -0.25
+        y_neutral[12] = -0.25
+        t = linspace(0.0, D_t, n_samples)
+        arts_trajectory += [odeint(motor_dynamics, y0, t, args=(m_, damping_factor, w0))]
+    total_dims = sum([x.shape[0] for x in arts_trajectory])
+    arts_trajectory_ = np.zeros((total_dims,26))
+    filled = 0
+    for x in arts_trajectory:
+        to_fill = x.shape[0]
+        arts_trajectory_[filled:filled+to_fill, :] = x
+        filled += to_fill
+    return arts_trajectory_
+
+def motor_dynamics(y, t, m, damping_factor, w0):
+    dy1 = y[13]
+    dy2 = y[14]
+    dy3 = y[15]
+    dy4 = y[16]
+    dy5 = y[17]
+    dy6 = y[18]
+    dy7 = y[19]
+    dy8 = y[20]
+    dy9 = y[21]
+    dy10 = y[22]
+    dy11 = y[23]
+    dy12 = y[24]
+    dy13 = y[25]
+
+    dy14 = -2 * damping_factor * w0 * y[13] - (pow(w0, 2)) * y[0] + (pow(w0, 2)) * m[0]
+    dy15 = -2 * damping_factor * w0 * y[14] - (pow(w0, 2)) * y[1] + (pow(w0, 2)) * m[1]
+    dy16 = -2 * damping_factor * w0 * y[15] - (pow(w0, 2)) * y[2] + (pow(w0, 2)) * m[2]
+    dy17 = -2 * damping_factor * w0 * y[16] - (pow(w0, 2)) * y[3] + (pow(w0, 2)) * m[3]
+    dy18 = -2 * damping_factor * w0 * y[17] - (pow(w0, 2)) * y[4] + (pow(w0, 2)) * m[4]
+    dy19 = -2 * damping_factor * w0 * y[18] - (pow(w0, 2)) * y[5] + (pow(w0, 2)) * m[5]
+    dy20 = -2 * damping_factor * w0 * y[19] - (pow(w0, 2)) * y[6] + (pow(w0, 2)) * m[6]
+    dy21 = -2 * damping_factor * w0 * y[20] - (pow(w0, 2)) * y[7] + (pow(w0, 2)) * m[7]
+    dy22 = -2 * damping_factor * w0 * y[21] - (pow(w0, 2)) * y[8] + (pow(w0, 2)) * m[8]
+    dy23 = -2 * damping_factor * w0 * y[22] - (pow(w0, 2)) * y[9] + (pow(w0, 2)) * m[9]
+    dy24 = -2 * damping_factor * w0 * y[23] - (pow(w0, 2)) * y[10] + (pow(w0, 2)) * m[10]
+    dy25 = -2 * damping_factor * w0 * y[24] - (pow(w0, 2)) * y[11] + (pow(w0, 2)) * m[11]
+    dy26 = -2 * damping_factor * w0 * y[25] - (pow(w0, 2)) * y[12] + (pow(w0, 2)) * m[12]
+
+    return [dy1, dy2, dy3, dy4, dy5, dy6, dy7, dy8, dy9, dy10, dy11, dy12, dy13, dy14, dy15, dy16, dy17, dy18, dy19,
+            dy20, dy21, dy22, dy23, dy24, dy25, dy26]
+
+
+def save_obj(obj, name ):
+    with open(''+ name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+def load_obj(name ):
+    with open('' + name + '.pkl', 'rb') as f:
+        return pickle.load(f)
