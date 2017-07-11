@@ -1,6 +1,14 @@
-# Add any directories, files, or patterns you don't want to be tracked by version control
-.pyc
-.ipynb_checkpoints
+.settings
 .idea
-.npz
-.pkl
+.project
+.pydevproject
+*.npz
+*.pkl
+*.pyc
+*.mat
+*.h5
+*.mp4
+*.npy
+*.tar.gz
+*.txt
+*.eps
