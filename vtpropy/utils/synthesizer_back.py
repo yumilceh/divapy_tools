@@ -292,6 +292,17 @@ def slider_change_callback(foo):
     vt_line3.x = np.real(sys.outline_play[idx][354:])
     vt_line3.y = np.imag(sys.outline_play[idx][354:])
 
+    print(play.get_state('_playing')['_playing'])
+    print(slider.value + step_txt.value)
+
+    if play.get_state('_playing')['_playing'] and slider.value + step_txt.value + 1 > slider.max:
+        if sound_chk.value:
+            sound_btn.disabled = False
+            sys.play_sound(sys.sound_play)
+        play.set_trait('_playing',False)
+        slider.value = slider.max
+
+
 def param_change_callback(foo):
     update_vocalization()
     update_plots()
@@ -301,6 +312,7 @@ def param_change_callback(foo):
 def play_callback(foo):
     if sound_chk.get_interact_value():
         sys.play_sound(sys.sound_play)
+    slider.value=slider.max
 
 
 def btn_repeat_sound_callback(foo):
