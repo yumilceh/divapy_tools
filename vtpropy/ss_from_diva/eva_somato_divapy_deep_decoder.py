@@ -4,7 +4,7 @@ Created on June,2017
 @author: Juan Manuel Acevedo Valle
 """
 
-from SensorimotorExploration.Algorithm.utils.functions import get_random_motor_set
+from exploration.algorithm.utils.functions import get_random_motor_set
 from divapy import  Diva
 
 import numpy as np

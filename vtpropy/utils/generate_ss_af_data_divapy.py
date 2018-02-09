@@ -4,7 +4,7 @@ Created on June,2017
 @author: Juan Manuel Acevedo Valle
 """
 
-from SensorimotorExploration.Algorithm.utils.functions import get_random_motor_set
+from exploration.algorithm.utils.functions import get_random_motor_set
 from divapy import  Diva
 
 import numpy as np
@@ -58,7 +58,7 @@ norm_ss_train[np.where(np.isnan(norm_ss_train))] = 0
 norm_ss_test = np.divide(np.subtract(ss_test, ss_min_val), np.subtract(ss_max_val, ss_min_val))
 norm_ss_test[np.where(np.isnan(norm_ss_test))]=0
 
-np.savez("data/dataset1.npz", af_max_val=af_max_val,
+np.savez("dataset1.npz", af_max_val=af_max_val,
                               af_min_val=af_min_val,
                               af_train=af_train,
                               norm_af_train=norm_af_train,
