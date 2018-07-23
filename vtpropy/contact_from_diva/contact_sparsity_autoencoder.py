@@ -4,7 +4,7 @@ Created on June,2017
 @author: Juan Manuel Acevedo Valle
 """
 
-from SensorimotorExploration.Algorithm.utils.functions import get_random_motor_set
+from exploration.algorithm.utils.functions import get_random_motor_set
 from divapy import  Diva
 
 import numpy as np
@@ -46,7 +46,7 @@ with tf.device(use_device):
     autoencoder.compile(optimizer='RMSprop', loss='mean_squared_error')
 
 
-    data = np.load('data/dataset1_contact.npz')
+    data = np.load('../data/dataset1_contact.npz')
     norm_contact_train = data['norm_contact_train']
     norm_contact_test = data['norm_contact_test']
 

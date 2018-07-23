@@ -327,10 +327,13 @@ def play_all_callback(foo):
 
 
 def add_articulation_callback(foo):
-    if add_btn.description == "Set x_0":
+    if len(sys.articulations)==0 and add_btn.description == "Set x_0":
+        # print("I am here")
         sys.articulatory_x0 = np.array([float(x.get_interact_value()) for x in m])
+        # print(sys.articulatory_x0)
         sys.articulatory_xp0 = np.zeros((13,))
         add_btn.description = "Add"
+        param_change_callback(0)
     else:
         m_ = np.array([float(x.get_interact_value()) for x in m])
         D_t = params_box[1].get_interact_value()
@@ -340,11 +343,14 @@ def add_articulation_callback(foo):
             sys.articulations += [Articulation(**{'m':m_,'w0':w0,'D_t':D_t,
                                                   'damping_factor':damping_factor})]
         else:
+            print("I am here")
+            sys.articulatory_x0 = np.array([float(x.get_interact_value()) for x in m])
             sys.articulations += [Articulation(**{'m': m_, 'w0': w0, 'D_t': D_t,
                              'x0':sys.articulatory_x0, 'xp0':sys.articulatory_xp0,
                              'damping_factor': damping_factor})]
         art_slt.options = range(len(sys.articulations))
         art_slt.value = len(sys.articulations)-1
+        param_change_callback(0)
 
 def remove_art_callback(foo):
     idx = art_slt.get_interact_value()

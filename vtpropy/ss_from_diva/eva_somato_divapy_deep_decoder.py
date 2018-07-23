@@ -35,7 +35,7 @@ with tf.device(use_device):
 
     decoder.compile(optimizer='RMSprop', loss='mean_squared_error')
 
-    data = np.load('data/dataset1.npz')
+    data = np.load('../data/dataset1.npz')
     norm_af_train = data['norm_af_train']
     norm_af_test = data['norm_af_test']
 
